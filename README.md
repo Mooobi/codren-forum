@@ -1,6 +1,84 @@
-# Coldren Forum
+# Codren Forum
 
 - 계속 업데이트 중입니다.
+
+<details>
+
+<summary>
+
+## 2023. 5. 30. 프로젝트 6일차
+
+</summary>
+
+### 로그인 상태에 따른 CRUD 조건부 렌더링 구현
+
+- 글 작성 시, 로그인 되어 있지 않으면 로그인하라는 문구가 나타나고, 로그인 되어 있으면 글 작성이 가능토록 해야합니다. 여기서 문제가 발생하는데 카카오 OAuth로 받아올 수 있는 유저 정보 중에 필수 항목으로 체크할 수 있는게 닉네임과 프로필 사진밖에 없습니다. 닉네임은 보통 이름으로 짓는데, 이는 고유한 ID로서 사용할 수가 없습니다. 고유한 ID로 사용 가능한 것은 email인데 email은 선택적으로 받아올 수 있습니다. 즉, 유저가 동의하지 않으면 받아올 수 없습니다. 따라서 글 작성 시 로그인이 되어있지만 email 동의를 체크하지 않았다면, 회원 정보에 email을 기입하도록 해서 강제적으로 유저 식별이 가능토록 해야 합니다.
+
+- 먼저, 회원 정보 수정을 위한 마이페이지를 만들기 전에 양 사이드를 컴포넌트화하여 각 페이지에서 재사용하도록 만들었습니다.
+
+- 왼쪽 사이드 컴포넌트에서 아래와 같이 usePathname을 사용하여 현재 경로에 따른 조건부 렌더링을 해주었습니다.
+
+```TS
+const LeftSide = () => {
+...
+  const path = usePathname();
+
+  return (
+    <>
+      {path === '/' && (
+        ...
+      )}
+      {(path === '/edit' || path === '/write') && (
+        ...
+      )}
+    </>
+  );
+};
+```
+
+- 근데 수정하고 나니 마이페이지에는 사이드바가 없다는 걸 깨달았습니다. 깔끔하게 정리한걸 위안 삼겠습니다.
+
+- 여러 페이지에서 사용하는 Card UI 컴포넌트를 별도로 생성하여 재사용토록 하였습니다.
+
+```TS
+// Card.tsx
+const Card = (props: any) => {
+  const Card = tw.div`
+  ml-4 flex h-8 w-24 items-center justify-center rounded-md
+  `;
+  return <Card className={props.className}>{props.children}</Card>;
+};
+
+//Header.tsx
+...
+<Card className="h-16 w-48 bg-moogray text-2xl text-mooblack">
+  CodrenForum
+</Card>
+...
+```
+
+- 위 코드에서 Header.tsx의 Card에 트윈테일 속성이 적용이 되지 않아 고민해보다가 className도 props로 넘겨주면 되지 않나 라는 생각에 시도해보았는데 잘 되어 기분이 좋았습니다.
+
+- Login, Logout 컴포넌트를 Sign 컴포넌트로 합쳐주었습니다. mypage 만들려고 했는데 갑자기 리팩토링하기 시작했습니다. 이제 어느정도 한 것 같으니 mypage를 만들어 보겠습니다.
+
+- mypage를 만들고 나서 email을 입력하면 제출할 곳이 필요한데 기존의 로그인을 토큰 으로 하기 때문에 DB에 추가 입력된 유저 정보를 저장할 수 없습니다. 따라서 로그인 방식을 세션으로 변경하여 유저가 로그인하면 서버에 유저 정보가 저장되게 변경하였습니다.
+
+```TS
+export const authOptions: any = {
+  providers: [
+    KakaoProvider({
+      clientId: process.env.KAKAO_CLIENT_ID!,
+      clientSecret: process.env.KAKAO_CLIENT_PASSWORD!,
+    }),
+  ],
+  secret: '1234',
+  adapter: MongoDBAdapter(connectDB), // 추가된 부분
+};
+```
+
+- 이제 몽고DB에 유저 정보가 저장되었고, 유저가 email을 입력하면 DB에서 현재 로그인한 유저 정보를 찾아 입력한 email을 추가해주도록 하겠습니다. 잠이 오니까 내일 하겠습니다.
+
+</details>
 
 <details>
 
