@@ -18,7 +18,6 @@ const ListItem = ({ result }: any) => {
               </Link>
               <div className="flex">
                 <p>{item.stack}</p>
-
                 <Link
                   className="mx-2"
                   prefetch={false}
