@@ -1,7 +1,7 @@
-import Header from '@/components/Header';
+import Header from '@/components/server/Header';
 import './globals.css';
 import { Inter } from 'next/font/google';
-import Footer from '@/components/Footer';
+import Footer from '@/components/server/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -16,8 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="h-screen">
+      <body
+        className={`flex-col items-center justify-center text-sm font-black ${inter.className}`}
+      >
+        {/* @ts-expect-error Async Server Component */}
         <Header />
         {children}
         <Footer />
