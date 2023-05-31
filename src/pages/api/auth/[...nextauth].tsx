@@ -1,5 +1,7 @@
 import NextAuth from 'next-auth/next';
 import KakaoProvider from 'next-auth/providers/kakao';
+import { MongoDBAdapter } from '@next-auth/mongodb-adapter';
+import { connectDB } from '../../../../util/database';
 
 export const authOptions: any = {
   providers: [
@@ -8,7 +10,8 @@ export const authOptions: any = {
       clientSecret: process.env.KAKAO_CLIENT_PASSWORD!,
     }),
   ],
-  secret: '1234',
+  secret: process.env.SECRET_KEY,
+  adapter: MongoDBAdapter(connectDB),
 };
 
 export default NextAuth(authOptions);
