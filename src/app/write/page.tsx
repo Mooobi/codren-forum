@@ -1,8 +1,8 @@
 import Form from '@/components/client/Form';
+import Card from '@/components/UI/Card';
 import { authOptions } from '@/pages/api/auth/[...nextauth]';
 import { getServerSession } from 'next-auth';
 import Link from 'next/link';
-import tw from 'tailwind-styled-components';
 
 const Write = async () => {
   let session: any = await getServerSession(authOptions);
@@ -21,9 +21,6 @@ const Write = async () => {
     );
   }
 
-  const Card = tw.div`
-  ml-4 flex h-8 w-24 items-center justify-center rounded-md m-4
-  `;
   return (
     <main className="mt-20 flex h-[85vh] items-center justify-center">
       <div className="flex h-full max-w-[1440px] justify-between">
