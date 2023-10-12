@@ -4,6 +4,353 @@
 
 <summary>
 
+## 2023. 10. 12.
+
+</summary>
+
+오늘은 기존의 컴포넌트들을 옮겨오면서 리팩토링해보겠습니다.
+
+### Header
+
+```ts
+const Header = async () => {
+  const session: any = await getServerSession(authOptions);
+  // console.log(session);
+
+  return (
+    <header>
+      <div>
+        <section>
+          <Link href='/'>
+            <Card>CodrenForum</Card>
+          </Link>
+          <Link href='/about'>
+            <Card>어바웃</Card>
+          </Link>
+        </section>
+        <section>
+          <div>
+            {session && (
+              <Link href='/mypage'>
+                <Card>
+                  {session.user.name}
+                  <Image src={session.user.image} alt='profile' width={40} height={40} />
+                </Card>
+              </Link>
+            )}
+            <div>
+              <Sign session={session} />
+              {session && <Card>후원하기</Card>}
+            </div>
+          </div>
+        </section>
+      </div>
+    </header>
+  );
+};
+```
+
+기존의 Header 컴포넌트입니다. JSX 부분이 불필요하게 길어 보입니다.
+
+아래는 새로 만든 Header 컴포넌트입니다.
+
+```ts
+export default function Header() {
+  const { data: session } = useSession();
+
+  return (
+    <Wrapper>
+      <Container>
+        <Link href='/'>CodrenForum</Link>
+      </Container>
+      <Container>
+        <Link href='/about'>About</Link>
+        {session ? (
+          <Link href='/mypage'>MyPage</Link>
+        ) : (
+          <Link href='/signup'>
+            <Button background='#686B3A' color='white'>
+              SignUp
+            </Button>
+          </Link>
+        )}
+        <SignButton session={session} />
+      </Container>
+    </Wrapper>
+  );
+}
+
+... // styled component 부분
+```
+
+일단 한눈에 보기에도 코드 가독성이 좋아졌습니다. 재사용가능한 Button 컴포넌트를 만들어 배경색과 글자색을 props로 받을 수 있도록 하였고 기존에는 서버컴포넌트였기에 현재 유저 정보를 `getServerSession()` 으로 받아왔지만 현재는 클라이언트 컴포넌트라서 `useSession()`으로 받아왔습니다.`useSession()`을 사용하려면 `SessionProvider`로 감싸주어야 합니다.
+
+자세한 설명은 아래 공식 문서를 참고하면 되겠습니다.
+
+https://next-auth.js.org/getting-started/client#usesession
+
+### Button
+
+저는 버튼 컴포넌트를 아래와 같이 만들었습니다.
+
+```ts
+import styled from 'styled-components';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  background?: string;
+  color?: string;
+}
+
+export default function Button(props: ButtonProps) {
+  return <SC_Button {...props}>{props.children}</SC_Button>;
+}
+
+const SC_Button = styled.button<ButtonProps>`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  min-width: 4rem;
+  background: ${(props) => props.background};
+  color: ${(props) => props.color};
+`;
+```
+
+그런데 화면에 아래의 경고 메시지가 나타났습니다.
+
+![](/assets/image/image-7.png)
+
+저 background 속성이 실제 DOM 트리에 속성으로 전달되는데 실제로 저 속성이 존재하지 않기 때문에 인식을 못합니다. 따라서 이를 방지해주기 위해 `shouldForwardProp`을 사용해주어 해당 경고를 해결했습니다.
+
+```ts
+const SC_Button = styled.button.withConfig({
+  shouldForwardProp: (prop) => prop !== 'background',
+})<ButtonProps>`
+  ...
+`;
+```
+
+## SignIn & SignOut
+
+Next-auth를 사용하여 로그인을 구현했었기 때문에 아래와 같이 설정했습니다.
+
+먼저 `src/pages/api/auth/[...nextauth].tsx` 파일을 만들어주고 github Oauth 로그인과 일반 credential 로그인 설정을 해주었습니다.
+
+```ts
+import { connectDB } from '@/util/database';
+import NextAuth, { Session, User } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import GithubProvider from 'next-auth/providers/github';
+import bcrypt from 'bcrypt';
+import { JWT } from 'next-auth/jwt';
+
+export const authOptions = {
+  providers: [
+    GithubProvider({
+      clientId: process.env.GITHUB_ID as string,
+      clientSecret: process.env.GITHUB_SECRET as string,
+    }),
+    CredentialsProvider({
+      // 로그인페이지 폼 자동생성
+      name: 'credentials',
+      credentials: {
+        email: { label: 'email', type: 'text' },
+        password: { label: 'password', type: 'password' },
+      },
+
+      // 로그인요청시 실행되는코드
+      //직접 DB에서 아이디,비번 비교하고
+      //아이디,비번 맞으면 return 결과, 틀리면 return null 해야함
+      async authorize(credentials, req) {
+        let db = (await connectDB).db('forum');
+        let user = await db.collection<User>('user_cred').findOne({ email: credentials?.email });
+        if (!user) {
+          console.log('등록되지 않은 이메일입니다.');
+          return null;
+        }
+        const pwcheck = await bcrypt.compare(credentials?.password as string, user.password);
+        if (!pwcheck) {
+          console.log('올바르지 않은 비밀번호입니다.');
+          return null;
+        }
+        return user;
+      },
+    }),
+  ],
+
+  // jwt 설정 + jwt 만료일설정
+  session: {
+    jwt: true,
+    maxAge: 30 * 24 * 60 * 60,
+  },
+
+  callbacks: {
+    // jwt 만들 때 실행되는 코드
+    // user 변수는 DB의 유저정보담겨있고 token.user에 유저정보 저장
+    jwt: async ({ token, user }: { token: JWT; user: User }) => {
+      if (user) {
+        token.user = {};
+        token.user.name = user.name;
+        token.user.email = user.email;
+      }
+      return token;
+    },
+    // 유저 세션이 조회될 때 마다 실행되는 코드
+    session: async ({ session, token }: { session: Session; token: JWT }) => {
+      session.user = token.user;
+      return session;
+    },
+  },
+
+  secret: process.env.JWT_SECRET as string,
+};
+export default NextAuth(authOptions);
+```
+
+그리고 `src/util/database.tsx`파일을 만들고 mongodb와 연결해주는 설정을 해주었습니다.
+
+```ts
+import { MongoClient } from 'mongodb';
+
+const url = process.env.DB_URL as string;
+
+let connectDB: Promise<MongoClient>;
+
+declare global {
+  namespace globalThis {
+    var _mongo: Promise<MongoClient>;
+  }
+}
+
+if (process.env.NODE_ENV === 'development') {
+  if (!globalThis._mongo) {
+    globalThis._mongo = new MongoClient(url).connect();
+  }
+  connectDB = globalThis._mongo;
+} else {
+  connectDB = new MongoClient(url).connect();
+}
+
+export { connectDB };
+```
+
+이제 SignButton 컴포넌트를 만들어주고 아래와 같이 현재 로그인된 유저 정보의 존재 여부에 따라 signin 버튼과 signout 버튼이 보여지게 만들었습니다.
+
+```ts
+import { Session } from 'next-auth';
+import { signIn, signOut } from 'next-auth/react';
+import Button from './Button';
+
+export default function SignButton({ session }: { session: Session | null }) {
+  return (
+    <Button
+      background='#618856'
+      color='white'
+      onClick={() => {
+        session ? signOut() : signIn();
+      }}
+    >
+      {session ? 'SignOut' : 'SignIn'}
+    </Button>
+  );
+}
+```
+
+위 코드에서 signIn() 함수는 auth 설정에 따른 로그인 페이지를 만들어주는 함수입니다. 현재 저는 아래와 같이 github 로그인과 credential 로그인이 나오도록 만들어두었습니다.
+
+![](/assets/image/image-8.png)
+
+### signUp
+
+그러면 이제 signUp 페이지를 만들겠습니다.
+
+기존에는 카카오 Oauth 로그인만 사용했기 때문에 별도의 회원가입 페이지가 없어도 상관이 없었습니다.
+
+하지만 이번에는 credential 로그인도 구현했기 때문에 회원가입 페이지를 만들어야 합니다.
+
+먼저 `signup/page.tsx`에는 아래와 같이 구성했습니다.
+
+```ts
+export default function SignUp() {
+  const { data: session } = useSession();
+
+  if (session) {
+    redirect('/');
+  }
+
+  return (
+    <Wrapper>
+      <Container>
+        <Form />
+      </Container>
+    </Wrapper>
+  );
+}
+```
+
+현재 로그인 여부를 `useSession()`으로 받아오고 로그인되어 있을 경우에는 메인 페이지로 리다이렉트 시켜주었습니다.
+
+그리고 로그인 폼은 Form 컴포넌트에서 구현했습니다.
+
+```ts
+export default function Form() {
+  const {
+    name,
+    setName,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    nameError,
+    emailError,
+    passwordError,
+    isValid,
+  } = useVaildation();
+
+  return (
+    <Wrapper method='POST' action='/api/auth/signup'>
+      <h4>SignUp</h4>
+      <input
+        name='name'
+        type='text'
+        placeholder='name'
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <div>{nameError && nameError}</div>
+      <input
+        name='email'
+        type='text'
+        placeholder='email'
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <div>{emailError && emailError}</div>
+      <input
+        name='password'
+        type='password'
+        placeholder='password'
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <div>{passwordError && passwordError}</div>
+      <Button background='#7A5427' color='white' type='submit' disabled={!isValid}>
+        signUp
+      </Button>
+    </Wrapper>
+  );
+}
+```
+
+Form 컴포넌트에서는 필요한 정보만 알 수 있게 로직은 `useValidation` 훅에서 모두 처리하고 그 결과만 받아옵니다.
+
+</details>
+
+<details>
+
+<summary>
+
 ## 2023. 10. 11.
 
 </summary>
@@ -12,7 +359,7 @@
 
 Header 컴포넌트를 만들고 styled-component를 적용하니 아래와 같은 에러가 발생했습니다.
 
-![](image-3.png)
+![](/assets/image/image-3.png)
 
 서버컴포넌트에서는 createContext를 사용하면 안된다고 하는데 styled-components의 작동 과정에서 createContext가 사용되나 봅니다.
 
@@ -78,7 +425,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 아래는 공식문서의 안내문입니다.
 
-![](image-6.png)
+![](/assets/image/image-6.png)
 
 아래는 해당 이슈에 대한 어느 외국인들의 대화입니다.
 
@@ -114,7 +461,7 @@ https://github.com/styled-components/styled-components/issues/4025
 
 로컬환경에서 실행해보니 켜자마자 에러가 발생했습니다?
 
-![](image.png)
+![](/assets/image/image.png)
 일단 무시하고 전체적으로 정리를 좀 해야할 것 같습니다.
 
 강의를 다시 들으면서 next.js 및 next-auth 문서를 보다보니 문법이 삭제되거나 변경된 게 좀 있었습니다. 기존의 모듈을 node_module을 삭제하고 package.json에 명시된 종속성들을 업데이트하고 다시 설치하였습니다.
@@ -123,7 +470,7 @@ https://github.com/styled-components/styled-components/issues/4025
 
 서버를 껐다가 다시 켜보니 이제 tailwind 관련 에러가 발생했습니다.
 
-![](image-1.png)
+![](/assets/image/image-1.png)
 
 각 파일에서 tailwind 관련 import를 전부 삭제하고 className도 전부 삭제하여 style을 초기화하겠습니다.
 
@@ -131,7 +478,7 @@ https://github.com/styled-components/styled-components/issues/4025
 
 그런데 이제 아예 로컬환경에서 실행이 되질 않습니다.. 무한로딩에 어떠한 네트워크 요청도, 에러도 뜨지 않는 상태라 뭐가 잘못된건지 감도 잡히지 않습니다...(껐다 켜봄)
 
-![](image-2.png)
+![](/assets/image/image-2.png)
 
 이제 이 폴더는 오염되어 더이상 진행이 불가하다고 판단하고 새로운 next.js 프로젝트를 생성하여 내일부터는 기존 코드들을 옮겨가면서 리팩토링하는 과정을 거치겠습니다.
 
