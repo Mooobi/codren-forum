@@ -34,7 +34,7 @@ const Wrapper = styled.header`
   justify-content: space-between;
   align-items: center;
   position: sticky;
-  height: 3.5rem;
+  height: 5rem;
   padding: 1.5rem;
   border-bottom: 1px solid #bbbbbb;
 

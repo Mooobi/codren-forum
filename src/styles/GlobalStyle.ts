@@ -20,10 +20,11 @@ export const GlobalStyle = createGlobalStyle`
   body { 
     width: 100%;
     height: 100%;
-    max-width: 1440px;
     background-color: #ffffff;
     font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI;
     color: #444444;
+    display: flex;
+    flex-direction:column;
   }
   ul, ol {
     list-style: none;

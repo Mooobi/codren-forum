@@ -20,11 +20,11 @@ export default function SignUp() {
   );
 }
 
-const Wrapper = styled.main`
+const Wrapper = styled.section`
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100% - 3.5rem);
+  min-height: 100%;
 `;
 
 const Container = styled.section`
