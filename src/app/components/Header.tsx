@@ -10,7 +10,7 @@ export default function Header() {
   return (
     <Wrapper>
       <Container>
-        <Link href='/'>CodrenForum</Link>
+        <Link href='/list'>CodrenForum</Link>
       </Container>
       <Container>
         <Link href='/about'>About</Link>
@@ -34,9 +34,11 @@ const Wrapper = styled.header`
   justify-content: space-between;
   align-items: center;
   position: sticky;
-  height: 5rem;
-  padding: 1.5rem;
-  border-bottom: 1px solid #bbbbbb;
+  top: 0;
+  min-height: 5rem;
+  padding: 1rem 1.5rem;
+  background: white;
+  color: #444444;
 
   > :first-child {
     > :first-child {

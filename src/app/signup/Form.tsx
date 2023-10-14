@@ -70,7 +70,7 @@ const Wrapper = styled.form`
   > input {
     font-size: 1rem;
     padding: 0.5rem;
-    border: 1px solid #bbbbbb;
+    border: none;
     border-radius: 0.5rem;
     min-width: 15rem;
 

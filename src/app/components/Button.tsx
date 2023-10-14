@@ -22,7 +22,7 @@ const SC_Button = styled.button.withConfig({
   min-width: 4rem;
   background: ${(props) => props.background};
   color: ${(props) => props.color};
-  transition: background 0.3s, color 0.3s;
+  transition: 0.3s;
 
   &:hover {
     background: ${(props) => props.background && hexToRgb(props.background, 0.8)};

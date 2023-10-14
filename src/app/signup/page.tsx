@@ -12,20 +12,11 @@ export default function SignUp() {
   }
 
   return (
-    <Wrapper>
-      <Container>
-        <Form />
-      </Container>
-    </Wrapper>
+    <Container>
+      <Form />
+    </Container>
   );
 }
-
-const Wrapper = styled.section`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100%;
-`;
 
 const Container = styled.section`
   display: flex;
@@ -33,7 +24,7 @@ const Container = styled.section`
   align-items: center;
   min-height: 25rem;
   min-width: 20rem;
-  border: 1px solid #bbbbbb;
+  background: #f8f8f8;
   padding: 2rem;
   border-radius: 0.5rem;
 `;
