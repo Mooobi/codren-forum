@@ -4,6 +4,124 @@
 
 <summary>
 
+## 2023. 10. 14.
+
+</summary>
+
+오늘은 list 페이지를 구현해보았습니다.
+
+먼저 listItem 컴포넌트에서 모든 글들을 불러와서 렌더링했습니다.
+
+```ts
+{
+  filteredPosts?.map((post) => (
+    <ListItem key={post._id.toString()}>
+      <Link href={`/detail/${post._id.toString()}`} prefetch={false}>
+        <CategorySection>{post.category}</CategorySection>
+        <MainSection>
+          <Title>
+            <div>{post.title}</div>
+            <div>[{post.commentCount}]</div>
+          </Title>
+          <Info>
+            <div>{post.author}</div>
+            {isUpdated(post.createdAt, post.updatedAt) ? (
+              <div>{calculateTimeDifference(post.updatedAt)} (수정됨)</div>
+            ) : (
+              <div>{calculateTimeDifference(post.createdAt)}</div>
+            )}
+          </Info>
+        </MainSection>
+        <Like>
+          <AiFillLike />
+          {post.likeCount}
+        </Like>
+      </Link>
+    </ListItem>
+  ));
+}
+```
+
+그리고 list 페이지 컴포넌트에서 db의 데이터를 받아와 listItem 컴포넌트로 넘겨주었습니다.
+listItem 컴포넌트는 클라이언트 컴포넌트이기 때문에 현재 `async function`을 사용할 수 없습니다.
+따라서 페이지 컴포넌트를 서버 컴포넌트로 두고 클라이언트 컴포넌트에 props로 내려주는 방식을 사용했습니다.
+
+```ts
+import { connectDB } from '@/util/database';
+import ListItems from './ListItems';
+import { post } from '@/types/type';
+
+export const dynamic = 'force-dynamic';
+
+export default async function List() {
+  const db = (await connectDB).db('forum');
+  let posts = await db.collection<post>('post').find().toArray();
+
+  let parsedPosts = posts.map((post) => ({ ...post, _id: post._id.toString() }));
+
+  return <ListItems posts={parsedPosts} />;
+}
+```
+
+또한, list 페이지는 서버 컴포넌트임에도 실시간으로 변경되어야 하기 때문에 dynamic option을 `force-dynamic`으로 설정하여 항상 동적으로 동작하게끔 해주었습니다.
+
+카테고리에 따른 필터링도 구현했는데, 현재는 모든 글 데이터를 서버에서 받고, 프론트에서 카테고리에 따른 필터링 작업을 해주고 있습니다.
+
+```ts
+import { post } from '@/types/type';
+
+export default function filterPosts(posts: post[], category: string) {
+  if (category === '전체') return posts;
+  return posts.filter((post) => post.category === category);
+}
+```
+
+하지만 서버에서 해당 로직을 적용하고 애초에 db에서 필터링된 글만 받아오는게 서버의 역할에도 맞고, 성능면에서 더 유리하므로 추후에
+글 데이터를 서버에 요청 시에 카테고리에 따라 쿼리스트링을 다르게 설정해서 필터링된 데이터를 받는 것으로 변경할 예정입니다.
+
+Category 컴포넌트는 아래와 같이 구현하였습니다.
+
+```ts
+export default function Category({
+  current,
+  setCurrent,
+}: {
+  current: string;
+  setCurrent: Dispatch<SetStateAction<string>>;
+}) {
+  const handleCategory = (category: string) => {
+    setCurrent(category);
+  };
+
+  return (
+    <Wrapper>
+      {CATEGORY.map((category) => (
+        <CategoryButton
+          $isCurrent={current === category}
+          key={category}
+          onClick={() => handleCategory(category)}
+          disabled={current === category}
+        >
+          {category}
+        </CategoryButton>
+      ))}
+    </Wrapper>
+  );
+}
+```
+
+`CATEGORY`를 constants 파일에서 설정하고 해당 카테고리를 map 메서드를 사용하여 구현했고, 해당 카테고리를 클릭 시에 상태로 만들어놓은 `category`를 변경하여 listItem 컴포넌트에서 필터링도 동시에 되도록 하였습니다.
+
+```ts
+export const CATEGORY = ['전체', '개발질문', '채용정보', '프로젝트', '수다광장'];
+```
+
+</details>
+
+<details>
+
+<summary>
+
 ## 2023. 10. 12.
 
 </summary>
@@ -344,6 +462,26 @@ export default function Form() {
 ```
 
 Form 컴포넌트에서는 필요한 정보만 알 수 있게 로직은 `useValidation` 훅에서 모두 처리하고 그 결과만 받아옵니다.
+
+서버에서는 `bcrypt`를 사용하여 비밀번호를 암호화하고 이를 db에 저장하도록 구현했습니다.
+
+```ts
+import { connectDB } from '@/util/database';
+import { NextApiRequest, NextApiResponse } from 'next';
+import bcrypt from 'bcrypt';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    let hash = await bcrypt.hash(req.body.password, 10);
+
+    req.body.password = hash;
+
+    const db = (await connectDB).db('forum');
+    await db.collection('user_cred').insertOne(req.body);
+    res.redirect(302, '/');
+  }
+}
+```
 
 </details>
 
