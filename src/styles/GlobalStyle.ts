@@ -41,9 +41,9 @@ export const GlobalStyle = createGlobalStyle`
 
 export const PageWrapper = styled.main`
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  /* min-height: calc(100% - 5rem); */
   height: 100%;
   width: 100%;
   max-width: 1440px;
