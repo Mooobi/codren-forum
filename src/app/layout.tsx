@@ -1,19 +1,18 @@
-'use client';
-// import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
-import Header from './components/Header';
 import StyledComponentsRegistry from '../styles/registry';
-import { GlobalStyle, PageWrapper } from '../styles/GlobalStyle';
-import { NextAuthProvider } from './sessionProvider';
-import styled from 'styled-components';
+import { NextAuthProvider } from '../util/sessionProvider';
+import Header from '../components/Header';
+import StyledComponentsProvider from '../styles/StyledComponentsProvider';
+import PageProvider from '@/styles/PageProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
-// export const metadata: Metadata = {
-//   title: 'Codren Forum',
-//   description: 'community for junior developers',
-// };
+export const metadata: Metadata = {
+  title: 'Codren Forum',
+  description: 'community for junior developers',
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,9 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <NextAuthProvider>
           <StyledComponentsRegistry>
-            <GlobalStyle />
-            <Header />
-            <PageWrapper>{children}</PageWrapper>
+            <StyledComponentsProvider>
+              <Header />
+              <PageProvider>{children}</PageProvider>
+            </StyledComponentsProvider>
           </StyledComponentsRegistry>
         </NextAuthProvider>
       </body>

@@ -7,19 +7,18 @@ import { calculateTimeDifference } from '@/util/calculateTimeDifference';
 import Category from './Category';
 import { useState } from 'react';
 import filterPosts from '@/util/filterList';
+import SearchBar from './SearchBar';
+import isUpdated from '@/util/isUpdated';
 
 export default function ListItems({ posts }: { posts: post[] }) {
   const [current, setCurrent] = useState('전체');
 
   const filteredPosts = filterPosts(posts, current);
 
-  const isUpdated = (createdAt: Date, updatedAt: Date) => {
-    return createdAt.toString() !== updatedAt.toString();
-  };
-
   return (
     <Wrapper>
       <Category current={current} setCurrent={setCurrent} />
+      <SearchBar />
       {filteredPosts?.map((post) => (
         <ListItem key={post._id.toString()}>
           <Link href={`/detail/${post._id.toString()}`} prefetch={false}>

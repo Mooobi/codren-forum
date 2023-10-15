@@ -6,7 +6,6 @@ export type post = {
   createdAt: Date;
   updatedAt: Date;
   author: string;
-  avatar: string;
   commentCount: number;
   likeCount: number;
 };

@@ -1,5 +1,6 @@
+'use client';
 import styled from 'styled-components';
-import Button from '../components/Button';
+import Button from '../../components/Button';
 import useVaildation from '@/hooks/useValidation';
 
 export default function Form() {
@@ -17,42 +18,57 @@ export default function Form() {
   } = useVaildation();
 
   return (
-    <Wrapper method='POST' action='/api/auth/signup'>
-      <h4>SignUp</h4>
-      <input
-        name='name'
-        type='text'
-        placeholder='name'
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <Message $isValid={!!nameError}>{nameError ? nameError : '사용 가능한 이름입니다.'}</Message>
-      <input
-        name='email'
-        type='text'
-        placeholder='email'
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <Message $isValid={!!emailError}>
-        {emailError ? emailError : '사용 가능한 이메일입니다.'}
-      </Message>
-      <input
-        name='password'
-        type='password'
-        placeholder='password'
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <Message $isValid={!!passwordError}>
-        {passwordError ? passwordError : '사용 가능한 비밀번호입니다.'}
-      </Message>
-      <Button background='#7A5427' color='white' type='submit' disabled={!isValid}>
-        signUp
-      </Button>
-    </Wrapper>
+    <Container>
+      <Wrapper method='POST' action='/api/auth/signup'>
+        <h4>SignUp</h4>
+        <input
+          name='name'
+          type='text'
+          placeholder='name'
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Message $isValid={!!nameError}>
+          {nameError ? nameError : '사용 가능한 이름입니다.'}
+        </Message>
+        <input
+          name='email'
+          type='text'
+          placeholder='email'
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Message $isValid={!!emailError}>
+          {emailError ? emailError : '사용 가능한 이메일입니다.'}
+        </Message>
+        <input
+          name='password'
+          type='password'
+          placeholder='password'
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Message $isValid={!!passwordError}>
+          {passwordError ? passwordError : '사용 가능한 비밀번호입니다.'}
+        </Message>
+        <Button background='#7A5427' color='white' type='submit' disabled={!isValid}>
+          signUp
+        </Button>
+      </Wrapper>
+    </Container>
   );
 }
+
+const Container = styled.section`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 25rem;
+  min-width: 20rem;
+  background: #f8f8f8;
+  padding: 2rem;
+  border-radius: 0.5rem;
+`;
 
 const Wrapper = styled.form`
   display: flex;

@@ -1,7 +1,7 @@
 'use client';
 
 import styled from 'styled-components';
-import { CATEGORY } from '../constants/constants';
+import { CATEGORY_ALL } from '../../constants/constants';
 import { Dispatch, SetStateAction } from 'react';
 
 export default function Category({
@@ -17,7 +17,7 @@ export default function Category({
 
   return (
     <Wrapper>
-      {CATEGORY.map((category) => (
+      {CATEGORY_ALL.map((category) => (
         <CategoryButton
           $isCurrent={current === category}
           key={category}
