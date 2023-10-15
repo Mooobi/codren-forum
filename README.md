@@ -4,7 +4,326 @@
 
 <summary>
 
-## 2023. 10. 14.
+#### 2023. 10. 15.
+
+</summary>
+
+오늘은 글작성 페이지를 만들어 보겠습니다.
+
+그 전에 글 작성을 버튼을 만들어야 합니다. 글 작성 버턴은 list 페이지에 검색 바 컴포넌트를 만들고 그 안에 함께 넣어 주겠습니다.
+
+```ts
+export default function SearchBar() {
+  return (
+    <Wrapper>
+      <input type='search' placeholder='원하는 키워드를 검색해보세요' />
+      <Button background='#618856' color='white'>
+        검색
+      </Button>
+      <Link href='/write'>
+        <Button background='#686B3A' color='white'>
+          글 작성
+        </Button>
+      </Link>
+    </Wrapper>
+  );
+}
+```
+
+SearchBar 컴포넌트를 만들어서 listItem 컴포넌트 하위에 넣어주고 위와 같이 구성해주었습니다.
+
+원래라면 list 페이지 컴포넌트 하단에 바로 넣어주어야하지만 페이지 컴포넌트는 async 함수로 만들어서 db에서 글 데이터를 받아와야 하기 때문에 서버 컴포넌트로 만들었고 styled-components를 사용할 수 없기 때문에 사실상 listItem 컴포넌트 아래에 넣게 되었습니다.
+
+그리고 write 페이지 컴포넌트는 아래와 같이 구성했습니다.
+
+```ts
+'use client';
+import { useSession } from 'next-auth/react';
+import Form from './Form';
+import { useRouter } from 'next/navigation';
+
+export default function Write() {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  if (!session) {
+    router.push('/list');
+  }
+
+  return <Form />;
+}
+```
+
+클라이언트 컴포넌트로 만들어 useSession으로 현재 로그인한 유저 정보를 가져오고 로그인 정보가 없다면 list 페이지로 리다이렉트 시켜주었습니다.
+
+Form 컴포넌트는 signUp 컴포넌트에서 사용한 Form 컴포넌트와는 구성하는 HTML 요소도 다르고 로직도 조금 다르기 때문에 별도로 만들었습니다.
+
+여기까지 진행하고 난 뒤에 write 페이지를 확인하니 새로고침할 때마다 list 페이지로 리다이렉트 되었습니다. 문제는 useSession이 렌더링이 되고 난 후 실행되어
+session을 받아오기 전에 리다이렉트가 되어버린다는 것이였습니다. header 컴포넌트에서도 마찬가지로 새로고침 직후에는 signIn 버튼이 표시되고 session을 받아오고 난 뒤에 signOut 버튼으로 바뀌는 것을 확인했습니다. 이러한 렌더링 방식은 ux적으로 좋지 않기 때문에 session을 서버에서 미리 받아오게끔 설정할 필요가 있습니다.
+
+먼저, 기본적으로는 서버 컴포넌트에서 미리 작업을 한 후 클라이언트 컴포넌트로 넘겨주어야 하기 때문에 레이아웃부터 server 컴포넌트로 다시 고치도록 하겠습니다.
+
+```ts
+'use client';
+import { Inter } from 'next/font/google';
+
+import Header from './components/Header';
+import StyledComponentsRegistry from '../styles/registry';
+import { GlobalStyle, PageWrapper } from '../styles/GlobalStyle';
+import { NextAuthProvider } from './sessionProvider';
+import styled from 'styled-components';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang='en'>
+      <body className={inter.className}>
+        <NextAuthProvider>
+          <StyledComponentsRegistry>
+            <GlobalStyle />
+            <Header />
+            <PageWrapper>{children}</PageWrapper>
+          </StyledComponentsRegistry>
+        </NextAuthProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+레이아웃은 위와 같이 구성되어 있습니다. 자식요소들을 하나씩 없애면서 확인해보니 `GlobalStyle`과 `PageWrapper`가 서버 컴포넌트에서 사용할 수 없는 에러를 발생시키고 있었습니다.(이전의 styled-components를 서버 컴포넌트에서는 사용할 수 없는 이슈)
+
+공식문서에서는 이럴 경우 해당 요소를 클라이언트 컴포넌트로 새로 감싼 후 적용하라고 되어있습니다.
+
+따라서 GlobalStyle을 아래와 같이 `StyledComponentProvider`로 감싸주고 원래의 자리에 배치하였습니다.
+
+```ts
+'use client';
+
+import { GlobalStyle } from '@/styles/GlobalStyle';
+import { ReactNode } from 'react';
+
+export default function StyledComponentsProvider({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <GlobalStyle />
+      {children}
+    </>
+  );
+}
+```
+
+또한 PageWrapper도 아래와 같이 `PageProvider`로 감싸주었습니다.
+
+```ts
+'use client';
+
+import { ReactNode } from 'react';
+import { PageWrapper } from './GlobalStyle';
+
+export default function PageProvider({ children }: { children: ReactNode }) {
+  return <PageWrapper>{children}</PageWrapper>;
+}
+```
+
+이제 위 provider 들을 원래의 자리에 넣어주면 아래와 같이 레이아웃이 서버컴포넌트가 됩니다.
+
+```ts
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang='en'>
+      <body className={inter.className}>
+        <NextAuthProvider>
+          <StyledComponentsRegistry>
+            <StyledComponentsProvider>
+              <Header />
+              <PageProvider>{children}</PageProvider>
+            </StyledComponentsProvider>
+          </StyledComponentsRegistry>
+        </NextAuthProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+위와 같이 구현하고 나니 새로운 에러가 발생했습니다.
+
+![](/assets/image/image-9.png)
+
+첫 화면 로딩 시에 SSR로 렌더링 되고 이후 CSR로 렌더링 되면서 className이 달라져 발생하는 에러라고 합니다.
+
+이를 해결해주기 위해 `next.config.js` 파일에 아래와 같이 컴파일러 설정을 해주면 해결됩니다.
+
+```ts
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  compiler: {
+    styledComponents: true,
+  },
+};
+
+module.exports = nextConfig;
+```
+
+이제 리렌더링이 되어도 에러가 발생하지 않습니다. 그러면 마저 문제를 해결하기 위해 Header 컴포넌트를 수정해주겠습니다.
+
+기존의 Header 컴포넌트는 클라이언트 컴포넌트로 설정되어있기 때문에 서버 컴포넌트로 바꿔주고 `getServerSession`을 사용해서 유저 정보를 받아오겠습니다.
+
+```ts
+import { getServerSession } from 'next-auth';
+import InnerHeader from './InnerHeader';
+
+export default async function Header() {
+  const session = await getServerSession();
+
+  return <InnerHeader session={session} />;
+}
+```
+
+그리고 InnerHeader 컴포넌트를 생성하고 Header 컴포넌트 아래애 넣어주고 styled-components가 적용되는 부분을 전부 옮겨주었습니다.
+
+```ts
+'use client';
+import Link from 'next/link';
+import styled from 'styled-components';
+import SignButton from './SignButton';
+import Button from './Button';
+import { Session } from 'next-auth';
+
+export default function InnerHeader({ session }: { session: Session | null }) {
+  return (
+    <Wrapper>
+      <Container>
+        <Link href='/list'>CodrenForum</Link>
+      </Container>
+      <Container>
+        <Link href='/about'>About</Link>
+        {session ? (
+          <Link href='/mypage'>MyPage</Link>
+        ) : (
+          <Link href='/signup'>
+            <Button background='#686B3A' color='white'>
+              SignUp
+            </Button>
+          </Link>
+        )}
+        <SignButton session={session} />
+      </Container>
+    </Wrapper>
+  );
+}
+
+const Wrapper = styled.header`
+  ...
+`;
+
+const Container = styled.section`
+  ...
+`;
+```
+
+자 이제 로그인을 해보면! 터미널에 아래와 같은 에러가 발생하면서 로그인이 되지 않습니다.. 왜..? 잘 되다가 서버 컴포넌트로 바꾸니까..? 안되는지 모르겠지만
+
+![](/assets/image/image-10.png)
+
+해당 에러에서 안내한 페이지로 가니 개발환경에서는 `.env` 파일에 아래와 같이 `NEXTAUTH_URL`과 `NEXAUTH_SECRET`을 설정해주어야 한다고 합니다.
+
+```ts
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=1234
+```
+
+설정하고 나니!! 로그인이 잘 됩니다. 그리고 `getServerSession`으로 유저 정보도 잘 받아와집니다. 또한, 로그인한 상태에서 새로고침을 해도 SignIn 버튼이 나타나지 않습니다!
+
+울고 싶었는데 드디어 성공했습니다..!!
+
+이제 글 작성 페이지에서도 마찬가지로 `getServerSession`을 적용하고 새로고침해보겠습니다.
+
+```ts
+import { getServerSession } from 'next-auth';
+import Form from './Form';
+import { redirect } from 'next/navigation';
+
+export default function Write() {
+  const session = getServerSession();
+
+  if (!session) {
+    redirect('/list');
+  }
+
+  return <Form />;
+}
+```
+
+리다이렉트 되지 않고 페이지가 그대로 잘 유지 됩니다!
+
+감격스럽네요.
+
+write 페이지는 이제 제대로 완성 되었으니 submit 버튼 클릭 시에 서버에서 해줄 일만 추가해주면 되겠습니다.
+
+`pages/api/post/create.tsx`파일을 생성해주고 아래와 같이 코드를 작성해주었습니다.
+
+```ts
+import { connectDB } from '@/util/database';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const db = (await connectDB).db('forum');
+
+    const session = await getServerSession(req, res, authOptions);
+
+    req.body = {
+      ...req.body,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      author: session?.user?.email,
+      commentCount: 0,
+      likeCount: 0,
+    };
+
+    const result = await db.collection('post').insertOne(req.body);
+
+    res.redirect(302, `/detail/${result.insertedId}`);
+  }
+}
+```
+
+post 타입을 미리 지정해주었기 때문에 추가 정보를 넣는건 쉽습니다.
+
+```ts
+export type post = {
+  _id: string;
+  category: string;
+  title: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+  author: string;
+  commentCount: number;
+  likeCount: number;
+};
+```
+
+아직 detail 페이지를 만들지 않았지만 패스 파라미터로 응답으로 온 `_id`를 붙여줄 것이기 때문에 미리 리다이렉트 시켜주었습니다.
+
+이제 글 등록 버튼을 눌러보니! 해당 url로 리다이렉트 되었습니다. (물론 현재는 404 not found가 나옵니다.)
+
+그리고 list 페이지로 이동하여 새로운 글이 나타난 것을 확인하였습니다.
+
+내일은 detail 페이지를 작업해보겠습니다.
+
+</details>
+
+<details>
+
+<summary>
+
+#### 2023. 10. 14.
 
 </summary>
 
@@ -122,13 +441,13 @@ export const CATEGORY = ['전체', '개발질문', '채용정보', '프로젝트
 
 <summary>
 
-## 2023. 10. 12.
+#### 2023. 10. 12.
 
 </summary>
 
 오늘은 기존의 컴포넌트들을 옮겨오면서 리팩토링해보겠습니다.
 
-### Header
+#### Header
 
 ```ts
 const Header = async () => {
@@ -207,7 +526,7 @@ export default function Header() {
 
 https://next-auth.js.org/getting-started/client#usesession
 
-### Button
+#### Button
 
 저는 버튼 컴포넌트를 아래와 같이 만들었습니다.
 
@@ -249,7 +568,7 @@ const SC_Button = styled.button.withConfig({
 `;
 ```
 
-## SignIn & SignOut
+#### SignIn & SignOut
 
 Next-auth를 사용하여 로그인을 구현했었기 때문에 아래와 같이 설정했습니다.
 
@@ -379,7 +698,7 @@ export default function SignButton({ session }: { session: Session | null }) {
 
 ![](/assets/image/image-8.png)
 
-### signUp
+#### signUp
 
 그러면 이제 signUp 페이지를 만들겠습니다.
 
@@ -489,7 +808,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 <summary>
 
-## 2023. 10. 11.
+#### 2023. 10. 11.
 
 </summary>
 
@@ -589,7 +908,7 @@ https://github.com/styled-components/styled-components/issues/4025
 
 <summary>
 
-## 2023. 10. 10. 재개
+#### 2023. 10. 10. 재개
 
 </summary>
 
@@ -630,11 +949,11 @@ https://github.com/styled-components/styled-components/issues/4025
 
 <summary>
 
-## 2023. 5. 31. 프로젝트 7일차
+#### 2023. 5. 31. 프로젝트 7일차
 
 </summary>
 
-### 로그인 상태에 따른 CRUD 조건부 렌더링 구현
+#### 로그인 상태에 따른 CRUD 조건부 렌더링 구현
 
 - 로그인 시 email 제공 동의를 하지 않은 유저의 경우, mypage에서 email을 입력하면 유저 db에 email을 추가하도록 구현하였습니다.
 
@@ -648,7 +967,7 @@ https://github.com/styled-components/styled-components/issues/4025
 
 - 마이페이지에서 내가 작성할 글 목록을 수정, 삭제 버튼과 함께 나타나도록 구현하였습니다.
 
-### 더미데이터 생성 버튼 구현
+#### 더미데이터 생성 버튼 구현
 
 - 기능 작동 확인을 위해 더미데이터를 생성하여 db에 저장하는 더미데이터 생성 버튼을 만들었습니다.
 
@@ -694,11 +1013,11 @@ const handler = async (req: any, res: any) => {
 
 <summary>
 
-## 2023. 5. 30. 프로젝트 6일차
+#### 2023. 5. 30. 프로젝트 6일차
 
 </summary>
 
-### 로그인 상태에 따른 CRUD 조건부 렌더링 구현
+#### 로그인 상태에 따른 CRUD 조건부 렌더링 구현
 
 - 글 작성 시, 로그인 되어 있지 않으면 로그인하라는 문구가 나타나고, 로그인 되어 있으면 글 작성이 가능토록 해야합니다. 여기서 문제가 발생하는데 카카오 OAuth로 받아올 수 있는 유저 정보 중에 필수 항목으로 체크할 수 있는게 닉네임과 프로필 사진밖에 없습니다. 닉네임은 보통 이름으로 짓는데, 이는 고유한 ID로서 사용할 수가 없습니다. 고유한 ID로 사용 가능한 것은 email인데 email은 선택적으로 받아올 수 있습니다. 즉, 유저가 동의하지 않으면 받아올 수 없습니다. 따라서 글 작성 시 로그인이 되어있지만 email 동의를 체크하지 않았다면, 회원 정보에 email을 기입하도록 해서 강제적으로 유저 식별이 가능토록 해야 합니다.
 
@@ -790,11 +1109,11 @@ export const authOptions: any = {
 
 <summary>
 
-## 2023. 5. 29. 프로젝트 5일차
+#### 2023. 5. 29. 프로젝트 5일차
 
 </summary>
 
-### 카카오 로그인 구현
+#### 카카오 로그인 구현
 
 - Next-auth를 사용하여 카카오 로그인을 구현했습니다. 카카오 deveolpers에서 REST_API_KEY와 CLIENT_PASSWORD를 받고, redirect URL을 설정해주었습니다. 현재는 개발단계이기 때문에 localhost:3000으로 설정해놨었는데, 오류가 발생해서 보니 Next-auth로 카카오 로그인을 구현할 시 자동으로 http://localhost:3000/api/auth/callback/kakao 로 리다이렉트 되기 때문에 해당 url을 추가해주었습니다. 카카오는 국내 기업이기 때문에 Next-auth에 카카오 Provider는 없을 줄 알았는데, 혹시나 하는 마음으로 node-modules에서 찾아보니 kakao가 있어 정말 다행이였습니다. 이제 CRUD에 로그인 정보를 추가해주고, 로그인 여부에 따른 조건부 렌더링만 해주면 되겠습니다.
 
@@ -896,11 +1215,11 @@ module.exports = nextConfig;
 
 <summary>
 
-## 2023. 5. 28. 프로젝트 4일차
+#### 2023. 5. 28. 프로젝트 4일차
 
 </summary>
 
-### CRUD 구현
+#### CRUD 구현
 
 - 메인페이지에서 글 목록이 바로 나타날 수 있게 구현하였습니다. 추후에 상태 관리를 통한 필터링을 해주어야하므로 ListItem이라는 클라이언트 컴포넌트를 따로 만들고, 서버에서 글 목록 데이터를 받아온 후, 해당 데이터를 map 메서드를 사용하여 렌더링되게 구현하였습니다.
 
@@ -922,11 +1241,11 @@ module.exports = nextConfig;
 
 <summary>
 
-## 2023. 5. 27. 프로젝트 3일차
+#### 2023. 5. 27. 프로젝트 3일차
 
 </summary>
 
-### 카카오 로그인 구현
+#### 카카오 로그인 구현
 
 - 2일차에 벽에 부딪혀 찾아보니 next.js에서는 next auth라는 라이브러리로 Oauth를 통한 로그인 및 사이트 자체의 로그인까지 구현이 가능하다는 걸 알게 되었습니다. 방법은 알았으니 CRUD를 위한 페이지 및 api를 구현한 후 로그인 기능을 구현하여 적용해 보겠습니다.
 
@@ -936,17 +1255,17 @@ module.exports = nextConfig;
 
 <summary>
 
-## 2023. 5. 26. 프로젝트 2일차
+#### 2023. 5. 26. 프로젝트 2일차
 
 </summary>
 
-### 카카오 로그인 구현
+#### 카카오 로그인 구현
 
 - kakao developers에서 각종 설정을 하여 로그인 버튼 클릭 시 카카오 로그인 페이지로 이동 및 로그인 후 메인페이지로 redirect 되고, qeury parameter로 인가 code를 받아오는 데까지는 성공하였습니다. 그 이후 엑세스 토큰을 받아오는 과정이 정리가 되질 않아서 서버 및 DB를 구축한 후 다시 시도해보겠습니다.
 
 - DB는 mongodb를 사용했습니다. next js는 폴더 구조에서 자동으로 라우팅이 되고, api 라우팅도 되므로 경로만 지정해주면 해당 파일의 함수를 실행시켜 줍니다.
 
-### 글쓰기 페이지 구현
+#### 글쓰기 페이지 구현
 
 - 글 쓰는 페이지를 구현했습니다. 메인 페이지의 내비게이션 섹션을 가져와서 글 목록으로 돌아가는 버튼을 만들고 메인 섹션에는 form 태그를 사용해서 글제목, 카테고리 radio, 글 내용 input과 전송 버튼을 만들었습니다. 여기서 신기한 점은 form 태그 자체에 flex 속성을 주면 정렬이 안되어서 해결 방법을 찾다가 아래 div 태그로 한 번 더 감싸니 정렬이 되었습니다.
 
@@ -967,11 +1286,11 @@ module.exports = nextConfig;
 
 <summary>
 
-## 2023. 5. 25. 프로젝트 1일차
+#### 2023. 5. 25. 프로젝트 1일차
 
 </summary>
 
-### Header 구현
+#### Header 구현
 
 - 색 조합
   - 애플리케이션의 전체 색상에 일관성을 주기 위해 아래 5개 색상만 사용합니다.
@@ -1014,11 +1333,11 @@ module.exports = nextConfig;
 - Header는 View 컴포넌트의 역할을 하기 때문에 서버 컴포넌트로 사용을 하고 싶은데, 로그인 상태에 따라 우측 섹션의 요소들을 조건부 렌더링 해야합니다. 조건부 렌더링을 하려면 useState를 사용해서 상태에 따라 렌더링을 해야할 것 같은데 서버 컴포넌트에서는 useState를 사용할 수 없습니다. 일단 넘어가고 해결하면 다시 작성하겠습니다.
 - 로고, 어바웃, 로그인, 로그아웃 버튼에 각각 Link로 알맞은 경로에 라우팅해주었습니다. 후원하기 버튼은 클릭 시 모달을 띄우게 만들 것이므로, 모달 컴포넌트를 만든 후에 연결해주겠습니다.
 
-### Footer 구현
+#### Footer 구현
 
 - 기술할만한 것이 없습니다. 어느 페이지에서나 보여야 하므로 Header와 함께 layout에 넣어주었습니다.
 
-### Main 페이지 구현
+#### Main 페이지 구현
 
 - 내비게이션 섹션, 메인(게시글 목록) 섹션, 사이드바 섹션으로 구분하였습니다.
 - 내비게이션 섹션에는 글 작성 페이지로 라우팅 되는 글쓰기 버튼과, 글 목록을 필터링할 수 있는 버튼이 있습니다.
