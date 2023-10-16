@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       author: session?.user?.email,
       commentCount: 0,
       likeCount: 0,
+      liker: [],
     };
 
     const result = await db.collection('post').insertOne(req.body);

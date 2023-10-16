@@ -5,15 +5,20 @@ import styled from 'styled-components';
 import { AiFillLike } from 'react-icons/ai';
 import { calculateTimeDifference } from '@/util/calculateTimeDifference';
 import Category from './Category';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import filterPosts from '@/util/filterList';
 import SearchBar from './SearchBar';
 import isUpdated from '@/util/isUpdated';
+import { useRouter } from 'next/navigation';
 
 export default function ListItems({ posts }: { posts: post[] }) {
   const [current, setCurrent] = useState('전체');
-
+  const router = useRouter();
   const filteredPosts = filterPosts(posts, current);
+
+  useEffect(() => {
+    router.refresh();
+  }, [router]);
 
   return (
     <Wrapper>
@@ -52,7 +57,7 @@ const Wrapper = styled.ul`
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: 1080px;
+  width: 75%;
   gap: 0.5rem;
   padding: 0.5rem;
 `;

@@ -1,7 +1,6 @@
 import { connectDB } from '@/util/database';
 import ListItems from './ListItems';
 import { post } from '@/types/type';
-import Category from './Category';
 
 export const dynamic = 'force-dynamic';
 
