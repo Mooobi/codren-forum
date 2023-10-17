@@ -4,6 +4,127 @@
 
 <summary>
 
+#### 2023. 10. 16.
+
+</summary>
+
+오늘은 디테일 페이지를 만들어 보겠습니다.
+
+크게 PostDetails 컴포넌트와 Comment 컴포넌트로 구분하여 페이지를 구성하겠습니다.
+
+```ts
+import { connectDB } from '@/util/database';
+import { ObjectId } from 'mongodb';
+import PostDetails from './PostDetails';
+import { post } from '@/types/type';
+import Comment from './Comment';
+
+export default async function Detail({ params }: { params: ObjectId }) {
+  const db = (await connectDB).db('forum');
+  const post = await db.collection('post').findOne<post | null>({ _id: new ObjectId(params.id) });
+
+  return (
+    <>
+      {post && (
+        <>
+          <PostDetails post={{ ...post, _id: post._id.toString() }} />
+          <Comment _id={post._id.toString()} />
+        </>
+      )}
+    </>
+  );
+}
+```
+
+페이지 컴포넌트에서는 next.js의 동적 라우팅을 사용해서
+
+![](/assets/image/image-11.png)
+
+위와 같은 폴더 구조로 생성하였습니다. 이렇게 되면 페이지 컴포넌트에 props로 아래와 같은 정보들이 들어오는데
+
+```ts
+{ params: { id: '652a47ab3119847be9e5c07d' }, searchParams: {} }
+```
+
+그 중에 `params`를 이용해서 현재 글의 id를 추출했습니다.
+
+PostDetails 컴포넌트에서 해당 글의 상세 내용을 아래와 같이 화면에 렌더링하도록 만들어주었습니다.
+
+![](/assets/image/image-12.png)
+
+여기서 상단 제목의 like 아이콘 클릭 시 좋아요 기능을 추가하고, 내가 쓴 글일 경우에 수정, 삭제 버튼을 보이도록 해주겠습니다.
+
+먼저 detail 페이지에서 좋아요 버튼을 눌렀을 떄 실시간으로 좋아요 숫자가 바뀌어야 합니다. 따라서 상태를 만들어 화면에는 상태를 보여주도록 하고,
+
+아이콘 클릭 시에 좋아요 상태 변경과 서버로 patch 요청을 동시에 보내도록 만들어 보겠습니다.
+
+```ts
+const [like, setLike] = useState(post.likeCount); // 좋아요 상태
+const [didLike, setDidLike] = useState(false); // 현재 로그인한 유저가 해당 글을 좋아요 했는지 여부
+
+useEffect(() => {
+  // 화면이 마운트 되면 글 데이터의 liker에 현재 유저의 email이 포함되었는지 여부에 따라 didLike 상태 변경
+  if (session?.user?.email) {
+    post.liker.includes(session?.user?.email) ? setDidLike(true) : setDidLike(false);
+  }
+}, [post.liker, session?.user?.email]);
+
+const handleLikeCount = async () => {
+  // 좋아요 버튼 클릭했을 때
+  if (session?.user?.email) {
+    if (didLike) {
+      // 이미 좋아요한 글이라면
+      const result = await axios.patch('/api/post/like', {
+        // 글 db에 좋아요 숫자 감소, liker 배열에서 해당 유저 제거하여 patch 요청
+        ...post,
+        likeCount: post.likeCount - 1,
+        liker: post.liker.filter((user) => user !== session?.user?.email),
+      });
+      if (result.status === 200) {
+        // 제대로 응답이 왔을 경우
+        setLike((like) => like - 1); // 화면에 좋아요 숫자 변경
+        setDidLike(false); // didLike 상태 변경으로 좋아요 아이콘 색 변경
+      }
+    } else {
+      // 위와 반대의 경우
+      const result = await axios.patch('/api/post/like', {
+        ...post,
+        likeCount: post.likeCount + 1,
+        liker: [...post.liker, session?.user?.email],
+      });
+      if (result.status === 200) {
+        setLike((like) => like + 1);
+        setDidLike(true);
+      }
+    }
+  }
+};
+```
+
+위와 같이 설정하면 이제 아이콘을 눌렀을 때 좋아요 숫자가 증가하게 됩니다.
+
+그런데 문제가 생겼습니다. list 페이지에서도 해당 글의 좋아요 숫자를 보여주는데 여기서는 받아온 데이터를 그대로 보여주기 때문에 새로고침을 해야만 업데이트가 됩니다.
+
+따라서 list 페이지가 마운트될 때 listItem 컴포넌트 부분을 새로고침할 수 있도록 listItem 컴포넌트에 useRouter의 .refresh()를 사용해주도록 하겠습니다.
+
+```ts
+const router = useRouter();
+
+useEffect(() => {
+  router.refresh();
+}, [router]);
+```
+
+이제 list 페이지에서도 변경된 좋아요 숫자가 적용되었습니다.
+
+눈알이 빠질 것 같아서 수정, 삭제는 내일 하도록 하겠습니다.
+
+</details>
+
+<details>
+
+<summary>
+
 #### 2023. 10. 15.
 
 </summary>
