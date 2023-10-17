@@ -8,10 +8,19 @@ import { useEffect, useState } from 'react';
 import { Session } from 'next-auth';
 import axios from 'axios';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import useModal from '@/hooks/useModal';
 
 export default function PostDetails({ post, session }: { post: post; session: Session | null }) {
+  const router = useRouter();
   const [like, setLike] = useState(post.likeCount);
   const [didLike, setDidLike] = useState(false);
+
+  const { Modal, openModal } = useModal();
+
+  useEffect(() => {
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     if (session?.user?.email) {
@@ -45,7 +54,14 @@ export default function PostDetails({ post, session }: { post: post; session: Se
     }
   };
 
-  const handleDelete = () => {};
+  const handleDelete = async (id: string) => {
+    if (post.author === session?.user?.email) {
+      const result = await axios.delete(`/api/post/delete/${id}`);
+      if (result.status === 204) {
+        router.replace('/list');
+      }
+    }
+  };
 
   return (
     <Container>
@@ -75,12 +91,21 @@ export default function PostDetails({ post, session }: { post: post; session: Se
         </TitleSection>
         <ContentSection>
           <Content>{post.content}</Content>
-          <EditSection>
-            <Link href={`/edit/${post._id}`}>수정</Link>
-            <button onClick={handleDelete}>삭제</button>
-          </EditSection>
+          {session?.user?.email === post.author && (
+            <EditSection>
+              <Link href={`/edit/${post._id}`}>수정</Link>
+              <button onClick={openModal}>삭제</button>
+            </EditSection>
+          )}
         </ContentSection>
       </Wrapper>
+      <Modal
+        message='정말 글을 삭제하시겠습니까?'
+        buttonName='삭제'
+        clickHandler={() => handleDelete(post._id)}
+        background='#618856'
+        color='white'
+      />
     </Container>
   );
 }

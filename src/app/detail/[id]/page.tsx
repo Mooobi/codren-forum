@@ -5,7 +5,7 @@ import { post } from '@/types/type';
 import Comment from './Comment';
 import { getServerSession } from 'next-auth';
 
-// export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic';
 
 export default async function Detail({ params }: { params: ObjectId }) {
   const db = (await connectDB).db('forum');

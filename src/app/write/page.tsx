@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth';
-import Form from './Form';
+import Form from '../../components/Form';
 import { redirect } from 'next/navigation';
 
 export default function Write() {
