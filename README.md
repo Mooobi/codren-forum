@@ -4,6 +4,300 @@
 
 <summary>
 
+#### 2023. 10. 17.
+
+</summary>
+
+디테일 페이지의 수정, 삭제 기능을 마저 해보도록 하겠습니다.
+
+아래와 같이 ContentSecion 아래에 EditSecion을 만들고 수정, 삭제 버튼을 추가해주었습니다.
+
+```ts
+<ContentSection>
+  <Content>{post.content}</Content>
+  {session?.user?.email === post.author && (
+    <EditSection>
+      <Link href={`/edit/${post._id}`}>수정</Link>
+      <button onClick={handleDelete}>삭제</button>
+    </EditSection>
+  )}
+</ContentSection>
+```
+
+수정 버튼 클릭 시 수정 페이지로 연결되고, 버튼 클릭 시에는 삭제 확인 모달을 보여주고 모달 내의 삭제버튼 클릭 시 삭제되도록 구현해보겠습니다.
+
+page 컴포넌트에서 아래와 같이 접근 조건을 설정해줍니다.
+
+```ts
+export default async function Edit({ params }: { params: ObjectId }) {
+  // params의 id로 글 정보 받아오기
+  const db = (await connectDB).db('forum');
+  const post = await db.collection('post').findOne<post | null>({ _id: new ObjectId(params.id) });
+  const session = await getServerSession();
+
+  if (session?.user?.email !== post?.author) {
+    // 현재 유저 정보 받아서 글 정보의 글쓴이와 다르면 디테일 페이지로 리다이렉트
+    redirect(`/detail/${params.id}`);
+  }
+
+  return <></>; // 같으면 글 정보 채워진 화면 보여주기
+}
+```
+
+내부는 write 페이지에서 사용한 Form 컴포넌트를 재사용할 수 있도록 수정해서 사용하도록 하겠습니다.
+
+아래와 같이 Form 컴포넌트에 post가 props로 선택적으로 들어올 수 있게 만들고
+
+```ts
+export default function Form({ post }: { post?: post }) {
+```
+
+각 input에 defaultValue를 설정하여 post가 있다면 defaultValue 값으로 들어오도록 만들어주었습니다.
+
+```ts
+<input
+  ...
+  defaultValue={post?.title}
+/>
+<input
+  ...
+  defaultChecked={post?.category === category}
+/>
+<textarea
+  ...
+  defaultValue={post?.content}
+/>
+```
+
+그리고 post 여부에 따라 버튼의 text를 등록, 수정으로 나타나게 만들고 form 요소의 method와 endpoint가 변경되게 만들어 주었습니다.
+
+```ts
+<Wrapper //form
+  method={post ? 'PATCH' : 'POST'}
+  action={post ? 'api/post/edit' : '/api/post/create'}
+>
+...
+<Button background='#7A5427' color='white' type='submit'>
+  {post ? '수정' : '등록'}
+</Button>
+```
+
+이제 서버쪽 핸들러를 아래와 같이 간단하게 설정해놓고
+
+```ts
+import { NextApiRequest, NextApiResponse } from 'next';
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'PATCH') {
+    console.log(req.body);
+  }
+}
+```
+
+수정 버튼을 클릭해보니 에러가 발생하였습니다.
+
+![](/assets/image/image-13.png)
+
+GET 요청이 실패했다고 뜹니다. form 요소는 기본적으로 method에서 GET, POST 두가지만 지원을하는데 깜빡했습니다.
+
+PATCH 요청은 onClick으로 작동하도록 만들어보겠습니다.
+
+버튼에서 post가 있을 경우에만 이벤트 핸들러 함수가 실행되도록 만들어놓습니다.
+
+```ts
+<Button background='#7A5427' color='white' type='submit' onClick={(e) => post && handleEdit(e)}>
+  {post ? '수정' : '등록'}
+</Button>
+```
+
+form 요소의 기본 작동으로 전송할 때는 데이터를 따로 상태로 만들 필요가 없었지만 onClick 이벤트로 전송하려면 onChange 이벤트를 사용하여 상태로 저장하고 변경된 수정 버튼 클릭 시에 해당 상태를 서버로 전송하도록 만들어야합니다.
+
+따라서 아래와 같이 editedData를 상태로 만들고 handleChange 함수를 만들어 해당 input의 데이터가 변경될 때마다 상태를 변경해주겠습니다.
+
+```ts
+const [editedData, setEditedData] = useState(post);
+
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  key: string,
+) => {
+  setEditedData((prevPost) => prevPost && { ...prevPost, [key]: e.target.value });
+};
+...
+<input
+  ...
+  defaultValue={post?.title}
+  onChange={(e) => post && handleChange(e, 'title')}
+/>
+<input
+  ...
+  defaultChecked={post?.category}
+  onChange={(e) => post && handleChange(e, 'category')}
+/>
+<input
+  ...
+  defaultValue={post?.content}
+  onChange={(e) => post && handleChange(e, 'content')}
+/>
+```
+
+그리고 수정 버튼 클릭 시 작동하는 handleEdit 함수를 아래와 같이 만들어 주었습니다.
+
+```ts
+const router = useRouter();
+const handleEdit = async (e: React.MouseEvent) => {
+  e.preventDefault();
+  const result = await axios.patch('/api/post/edit', editedData);
+  if (result.status === 200) {
+    router.replace(`/detail/${post?._id}`);
+  }
+};
+```
+
+next.js의 `useRouter()` 를 사용하여 detail 페이지로 이동해줍니다. 그리고 지난번 좋아요 기능이 list 페이지에서 업데이트 되게 만들었던 것과 같이 detail 페이지에서도 수정된 내용이 업데이트 되도록 아래와 같이 refresh를 사용해줍니다.
+
+```ts
+const router = useRouter();
+
+useEffect(() => {
+  router.refresh();
+}, [router]);
+```
+
+서버측 핸들러에서는 아래와 같이 작동하도록 하였습니다.
+
+```ts
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'PATCH') {
+    const db = (await connectDB).db('forum');
+
+    req.body.updatedAt = new Date(); // 업데이트 날짜 수정
+
+    const _id = req.body._id;
+
+    delete req.body._id;
+
+    await db.collection('post').updateOne({ _id: new ObjectId(_id) }, { $set: req.body });
+
+    res.status(200).json('success');
+  }
+}
+```
+
+이제 수정 작업은 마쳤습니다. 다음으로 삭제인데, 먼저 삭제 버튼 클릭 시에 띄워줄 모달을 하나 만들어 보겠습니다.
+
+먼저 useModal 훅을 만들어 모달 관련 기능을 넣어주겠습니다.
+
+```ts
+import { ReactNode, useState } from 'react';
+
+export default function useModal() {
+  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 열림 여부
+
+  const openModal = () => {
+    // 모달 열기
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    // 모달 닫기
+    setIsModalOpen(false);
+  };
+
+  const Modal = ({
+    message,
+    buttonName,
+    children,
+    clickHandler,
+  }: {
+    message: string;
+    buttonName: string;
+    clickHandler: () => void;
+    children?: ReactNode;
+  }) => {
+    if (!isModalOpen) {
+      return null;
+    }
+    return (
+      <Backdrop onClick={closeModal}>
+        <ModalBox>
+          <Message>{message}</Message>
+          {children}
+          <Button onClick={clickHandler}>{buttonName}</Button>
+          <Button onClick={closeModal}>취소</Button>
+        </ModalBox>
+      </Backdrop>
+    );
+  };
+
+  return { isModalOpen, openModal, closeModal, Modal };
+}
+```
+
+useModal에서 반환하는 Modal 컴포넌트는 추후 다른 곳에서도 사용할 수 있도록 message, butttonName, clickHandler 등의 속성을 받도록 해주었습니다.
+
+그리고 PostDetails에서 호출하여 사용해주었습니다.
+
+```ts
+const { Modal, openModal } = useModal();
+...
+return (
+  ...
+  <Modal
+    message='정말 글을 삭제하시겠습니까?'
+    buttonName='삭제'
+    clickHandler={handleDelete}
+    background='#618856'
+    color='white'
+  />
+)
+```
+
+모달에서 삭제 버튼을 클릭 시에 실행되는 handleDelete는 아래와 같이 쿼리 스트링을 설정해서 서버에서 요청을 보냅니다.
+
+```ts
+const handleDelete = async (id: string) => {
+  if (post.author === session?.user?.email) {
+    const result = await axios.delete(`/api/post/delete/${id}`);
+    if (result.status === 204) {
+      router.replace('/list');
+    }
+  }
+};
+```
+
+서버측에서는 아래와 같이 폴더구조를 만들고
+
+![](/assets/image/image-14.png)
+
+```ts
+import { connectDB } from '@/util/database';
+import { ObjectId } from 'mongodb';
+import { NextApiRequest, NextApiResponse } from 'next';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'DELETE') {
+    const db = (await connectDB).db('forum');
+
+    await db.collection('post').deleteOne({ _id: new ObjectId(req.query.id as string) });
+
+    res.status(204).end();
+  }
+}
+```
+
+위와 같이 삭제를 하고 204를 응답 코드로 설정하고 응답 본문을 끝내는 end() 메서드를 붙여주었습니다.
+
+이제 정상적으로 삭제가 된 뒤 list 페이지로 리다이렉트 되는 것이 확인되었습니다.
+
+내일은 댓글 CRUD를 되는데까지 해보도록 하겠습니다.
+
+</details>
+
+<details>
+
+<summary>
+
 #### 2023. 10. 16.
 
 </summary>
