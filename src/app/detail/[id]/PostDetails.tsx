@@ -65,40 +65,38 @@ export default function PostDetails({ post, session }: { post: post; session: Se
 
   return (
     <Container>
-      <Wrapper>
-        <TitleSection>
-          <CategorySection>{post.category}</CategorySection>
-          <MainSection>
-            <Title>
-              <div>{post.title}</div>
-              <div>[{post.commentCount}]</div>
-            </Title>
-            <Info>
-              <div>{post.author}</div>
-              {isUpdated(post.createdAt, post.updatedAt) ? (
-                <div>{calculateTimeDifference(post.updatedAt)} (수정됨)</div>
-              ) : (
-                <div>{calculateTimeDifference(post.createdAt)}</div>
-              )}
-            </Info>
-          </MainSection>
-          <Like>
-            <button onClick={handleLikeCount}>
-              <AiFillLike fill={didLike ? '#4771b8' : '#444444'} />
-            </button>
-            {like}
-          </Like>
-        </TitleSection>
-        <ContentSection>
-          <Content>{post.content}</Content>
-          {session?.user?.email === post.author && (
-            <EditSection>
-              <Link href={`/edit/${post._id}`}>수정</Link>
-              <button onClick={openModal}>삭제</button>
-            </EditSection>
-          )}
-        </ContentSection>
-      </Wrapper>
+      <TitleSection>
+        <CategorySection>{post.category}</CategorySection>
+        <MainSection>
+          <Title>
+            <div>{post.title}</div>
+            <div>[{post.commentCount}]</div>
+          </Title>
+          <Info>
+            <div>{post.author}</div>
+            {isUpdated(post.createdAt, post.updatedAt) ? (
+              <div>{calculateTimeDifference(post.updatedAt)} (수정됨)</div>
+            ) : (
+              <div>{calculateTimeDifference(post.createdAt)}</div>
+            )}
+          </Info>
+        </MainSection>
+        <Like>
+          <button onClick={handleLikeCount}>
+            <AiFillLike fill={didLike ? '#4771b8' : '#444444'} />
+          </button>
+          {like}
+        </Like>
+      </TitleSection>
+      <ContentSection>
+        <Content>{post.content}</Content>
+        {session?.user?.email === post.author && (
+          <EditSection>
+            <Link href={`/edit/${post._id}`}>수정</Link>
+            <button onClick={openModal}>삭제</button>
+          </EditSection>
+        )}
+      </ContentSection>
       <Modal
         message='정말 글을 삭제하시겠습니까?'
         buttonName='삭제'
@@ -115,20 +113,11 @@ const Container = styled.section`
   flex-direction: column;
   justify-content: start;
   align-items: center;
+  gap: 1.5rem;
   width: 75%;
   background: #f8f8f8;
   padding: 2rem;
   border-radius: 0.5rem;
-`;
-
-const Wrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: start;
-  align-items: start;
-  gap: 1.5rem;
-  width: 100%;
-  height: 100%;
 `;
 
 const TitleSection = styled.section`
@@ -137,9 +126,8 @@ const TitleSection = styled.section`
   align-items: center;
   background: white;
   width: 100%;
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 0.5rem;
+  padding: 1rem;
   margin-bottom: 5px;
 `;
 
@@ -191,10 +179,8 @@ const ContentSection = styled.section`
   justify-content: space-between;
   background: white;
   width: 100%;
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 5px;
+  border-radius: 0.5rem;
+  padding: 1rem;
   min-height: 20rem;
   gap: 2rem;
 `;
