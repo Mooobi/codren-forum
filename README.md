@@ -4,6 +4,61 @@
 
 <summary>
 
+#### 2023. 10. 18.
+
+</summary>
+
+오늘은 디테일 페이지의 comment 부분을 만들어보겠습니다.
+
+comment는 댓글을 입력하는 input 부분과 댓글목록을 보여주는 list 부분으로 나눌 수 있습니다.
+
+먼저 input 부분을 만들어 보겠습니다.
+
+```ts
+<CommentInputSection method='POST' action={`/api/comment/create/${_id}`}>
+  <CommentInput name='content' placeholder='댓글을 입력해 보세요' required />
+  <Button type='submit' background='#7A5427' color='white'>
+    등록
+  </Button>
+</CommentInputSection>
+```
+
+form 요소를 베이스로 한 styled-component를 만들어주고 내부에 input과 버튼으로 간단하게 구현하였습니다.
+
+page 컴포넌트에서 props로 받아온 글의 `_id`를 쿼리스트링으로 하여 서버에 전달하고 서버측에서는 아래와 같이 추가적인 정보를 body에 넣어 db에 저장합니다.
+
+```ts
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const db = (await connectDB).db('forum');
+
+    const session = await getServerSession(req, res, authOptions);
+
+    req.body = {
+      ...req.body,
+      author: session?.user?.email,
+      parent: new ObjectId(req.query.id as string), // 댓글이 달린 게시물의 id 저장
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection('comment').insertOne(req.body);
+
+    res.redirect(302, `/detail/${req.query.id}`);
+  }
+}
+```
+
+다른 할 일이 있는 관계로 오늘은 여기까지 하겠습니다.
+
+![](/assets/image/image-15.png)
+
+</details>
+
+<details>
+
+<summary>
+
 #### 2023. 10. 17.
 
 </summary>
