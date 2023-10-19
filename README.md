@@ -4,6 +4,117 @@
 
 <summary>
 
+#### 2023. 10. 19.
+
+</summary>
+
+오늘은 댓글 조회 및 수정 기능을 만들어보았습니다.
+
+먼저 page 컴포넌트에서 db에 있는 댓글 리스트를 받아옵니다.
+
+```ts
+const comments = await db
+  .collection('comment')
+  .find<comment & { parent: ObjectId }>({ parent: new ObjectId(params.id) })
+  .toArray();
+```
+
+그리고 comment 컴포넌트에서 댓글 리스트를 만들어줍니다.
+
+```ts
+<CommentList>
+  {comments.map((comment) => (
+    <CommentListItem key={comment._id}>
+      <Author>{comment.author}</Author>
+      <div>{comment.content}</div>
+      <Info>
+        {session?.user?.email === comment.author && (
+          <Edit>
+            <button onClick={() => setIsEditing(comment._id)}>수정</button> // 클릭 시 isEditing을
+            해당 id로 변경
+            <button>삭제</button>
+          </Edit>
+        )}
+        <div>
+          {isUpdated(comment.createdAt, comment.updatedAt) ? (
+            <div>{calculateTimeDifference(comment.updatedAt)} (수정됨)</div>
+          ) : (
+            <div>{calculateTimeDifference(comment.createdAt)}</div>
+          )}
+        </div>
+      </Info>
+    </CommentListItem>
+  ))}
+</CommentList>
+```
+
+![](/assets/image/image-16.png)
+
+이제 수정 기능을 만들어보겠습니다.
+
+그리고 isEditing이 id와 같을 때 수정 화면으로 변경해줍니다.
+
+```ts
+<CommentList>
+        {comments.map((comment) => (
+          <CommentListItem key={comment._id}>
+            <Author>{comment.author}</Author>
+            {isEditing !== comment._id ? (
+              ... // 원래의 댓글 화면
+            ) : (
+              <EditForm method='POST' action={`/api/comment/edit/${comment._id}`}> // isEditing과 댓글의 id가 같을 때 나타나는 화면
+                <EditInput name='content' defaultValue={comment.content} required />
+                <div>
+                  <Button type='submit' background='#618856' color='white'>
+                    수정
+                  </Button>
+                  <Button onClick={() => setIsEditing('')} background='#444444' color='white'>
+                    취소
+                  </Button>
+                </div>
+              </EditForm>
+            )}
+          </CommentListItem>
+        ))}
+      </CommentList>
+```
+
+![](/assets/image/image-17.png)
+
+이제 수정 버튼을 클릭하면 지정해놓은 api 핸들러로 새로운 댓글 내용을 보냅니다.
+
+여기서 restful한 api라면 patch 요청을 보내는 게 맞지만, form의 편의성을 버리기엔 아쉬워 post 요청을 보냈습니다. 이 부분은 추후 상태를 사용한 api 요청으로 변경하면서 method를 patch로 변경해보도록 하겠습니다.
+
+그리고 서버에서는 아래와 같이 현재 db에 저장되어 있는 data를 찾아서 content와 updatedAt을 변경해주고 detail 페이지로 리다이렉트 시켜주었습니다.
+
+```ts
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const db = (await connectDB).db('forum');
+
+    const origin = await db
+      .collection('comment')
+      .findOne({ _id: new ObjectId(req.query.id as string) });
+
+    req.body = { ...origin, updatedAt: new Date(), content: req.body.content };
+
+    await db
+      .collection('comment')
+      .updateOne({ _id: new ObjectId(req.query.id as string) }, { $set: req.body });
+
+    res.redirect(302, `/detail/${req.body.parent}`);
+  }
+}
+```
+
+내일은 댓글 삭제+@를 진행해보겠습니다.
+
+</details>
+
+<details>
+
+<summary>
+
 #### 2023. 10. 18.
 
 </summary>
