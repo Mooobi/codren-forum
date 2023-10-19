@@ -115,9 +115,8 @@ const Container = styled.section`
   align-items: center;
   gap: 1.5rem;
   width: 75%;
-  background: #f8f8f8;
+  background: #eeeeee;
   padding: 2rem;
-  border-radius: 0.5rem;
 `;
 
 const TitleSection = styled.section`
@@ -128,7 +127,6 @@ const TitleSection = styled.section`
   width: 100%;
   border-radius: 0.5rem;
   padding: 1rem;
-  margin-bottom: 5px;
 `;
 
 const CategorySection = styled.div`

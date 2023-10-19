@@ -65,7 +65,7 @@ const Container = styled.section`
   align-items: center;
   min-height: 25rem;
   min-width: 20rem;
-  background: #f8f8f8;
+  background: #eeeeee;
   padding: 2rem;
   border-radius: 0.5rem;
 `;

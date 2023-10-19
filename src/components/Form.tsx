@@ -88,9 +88,8 @@ const Container = styled.section`
   align-items: center;
   height: 100%;
   width: 75%;
-  background: #f8f8f8;
+  background: #eeeeee;
   padding: 2rem;
-  border-radius: 0.5rem;
 `;
 
 const Wrapper = styled.form`
