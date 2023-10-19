@@ -1,5 +1,3 @@
-import { ObjectId } from 'mongodb';
-
 export type post = {
   _id: string;
   category: string;
@@ -11,4 +9,13 @@ export type post = {
   commentCount: number;
   likeCount: number;
   liker: string[];
+};
+
+export type comment = {
+  _id: string;
+  parent: string;
+  author: string;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
