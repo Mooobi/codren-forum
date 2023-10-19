@@ -49,9 +49,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 ```
 
-다른 할 일이 있는 관계로 오늘은 여기까지 하겠습니다.
-
 ![](/assets/image/image-15.png)
+
+이번주는 다른 공부에 집중해서 당분간 작업량이 많이 줄어들 것 같습니다. 내일은 댓글 조회+@ 해보겠습니다.
 
 </details>
 
