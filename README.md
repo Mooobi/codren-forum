@@ -52,31 +52,33 @@ const comments = await db
 
 이제 수정 기능을 만들어보겠습니다.
 
-그리고 isEditing이 id와 같을 때 수정 화면으로 변경해줍니다.
+수정 버튼 클릭 시 해당 댓글의 id를 isEditing 상태로 변경하고
+
+isEditing이 id와 같을 때 수정 화면으로 변경해줍니다.
 
 ```ts
 <CommentList>
-        {comments.map((comment) => (
-          <CommentListItem key={comment._id}>
-            <Author>{comment.author}</Author>
-            {isEditing !== comment._id ? (
-              ... // 원래의 댓글 화면
-            ) : (
-              <EditForm method='POST' action={`/api/comment/edit/${comment._id}`}> // isEditing과 댓글의 id가 같을 때 나타나는 화면
-                <EditInput name='content' defaultValue={comment.content} required />
-                <div>
-                  <Button type='submit' background='#618856' color='white'>
-                    수정
-                  </Button>
-                  <Button onClick={() => setIsEditing('')} background='#444444' color='white'>
-                    취소
-                  </Button>
-                </div>
-              </EditForm>
-            )}
-          </CommentListItem>
-        ))}
-      </CommentList>
+  {comments.map((comment) => (
+    <CommentListItem key={comment._id}>
+      <Author>{comment.author}</Author>
+      {isEditing !== comment._id ? (
+        ... // 원래의 댓글 화면
+      ) : (
+        <EditForm method='POST' action={`/api/comment/edit/${comment._id}`}> // isEditing과 댓글의 id가 같을 때 나타나는 화면
+          <EditInput name='content' defaultValue={comment.content} required />
+          <div>
+            <Button type='submit' background='#618856' color='white'>
+              수정
+            </Button>
+            <Button onClick={() => setIsEditing('')} background='#444444' color='white'>
+              취소
+            </Button>
+          </div>
+        </EditForm>
+      )}
+    </CommentListItem>
+  ))}
+</CommentList>
 ```
 
 ![](/assets/image/image-17.png)
