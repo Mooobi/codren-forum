@@ -20,6 +20,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await db.collection('comment').insertOne(req.body);
 
+    const commentList = await db.collection('comment').find({ parent: req.body.parent }).toArray();
+
+    await db
+      .collection('post')
+      .findOneAndUpdate({ _id: req.body.parent }, { $set: { commentCount: commentList.length } });
+
     res.redirect(302, `/detail/${req.query.id}`);
   }
 }

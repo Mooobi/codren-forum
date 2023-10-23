@@ -26,7 +26,7 @@ export default function Comment({
 
   const handleDelete = async (comment: comment) => {
     if (comment.author === session?.user?.email) {
-      const result = await axios.delete(`/api/comment/delete/${comment.parent}/${comment._id}`);
+      const result = await axios.delete(`/api/comment/delete/${comment._id}`);
       if (result.status === 204) {
         router.refresh();
       }
@@ -64,13 +64,6 @@ export default function Comment({
                     )}
                   </div>
                 </Info>
-                <Modal
-                  message='정말 댓글을 삭제하시겠습니까?'
-                  buttonName='삭제'
-                  clickHandler={() => handleDelete(deleteTarget as comment)}
-                  background='#618856'
-                  color='white'
-                />
               </>
             ) : (
               <EditForm method='POST' action={`/api/comment/edit/${comment._id}`}>
@@ -94,6 +87,13 @@ export default function Comment({
           등록
         </Button>
       </CommentInputSection>
+      <Modal
+        message='정말 댓글을 삭제하시겠습니까?'
+        buttonName='삭제'
+        clickHandler={() => handleDelete(deleteTarget as comment)}
+        background='#618856'
+        color='white'
+      />
     </Container>
   );
 }
