@@ -4,6 +4,146 @@
 
 <summary>
 
+#### 2023. 10. 23.
+
+</summary>
+
+오늘은 댓글 삭제 + 글 제목에 댓글 수 넣기를 해보겠습니다.
+
+먼저 저번에 만들어 놓은 useModal에서 Modal 컴포넌트와 openModal 함수를 가져옵니다.
+
+```ts
+const { Modal, openModal } = useModal();
+```
+
+그리고 버튼 클릭 시, 내가 삭제하려는 댓글 정보를 상태로 저장하고, 모달창을 엽니다.
+
+```ts
+<button
+  onClick={() => {
+    setDeleteTarget(comment);
+    openModal();
+  }}
+>
+  삭제
+</button>
+```
+
+모달창의 삭제 버튼을 클릭하면 이벤트 핸들러 함수를 실행합니다. 삭제가 완료 되면 현재 화면을 useRouter의 refresh() 기능으로 화면을 다시 받아옵니다.
+
+```ts
+const handleDelete = async (comment: comment) => {
+  if (comment.author === session?.user?.email) {
+    const result = await axios.delete(`/api/comment/delete/${comment.parent}/${comment._id}`);
+    if (result.status === 204) {
+      router.refresh();
+    }
+  }
+};
+...
+<Modal
+  message='정말 댓글을 삭제하시겠습니까?'
+  buttonName='삭제'
+  clickHandler={() => handleDelete(deleteTarget as comment)}
+  background='#618856'
+  color='white'
+/>;
+```
+
+api의 폴더 구조는 `comment/delete/[id]`로 댓글의 id를 쿼리스트링으로 하였습니다.
+
+api 핸들러는 아래와 같이 db에서 id로 해당 댓글을 찾아 삭제하도록 하였습니다.
+
+```ts
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'DELETE') {
+    const db = (await connectDB).db('forum');
+
+    await db.collection('comment').deleteOne({ _id: new ObjectId(req.query.id as string) });
+
+    res.status(204).end();
+  }
+}
+```
+
+이제 게시물마다 댓글 갯수롤 게시물 정보에 넣어 화면에 나타내주도록 하겠습니다.
+
+로직은 댓글을 생성하거나 삭제할 때, api 핸들러에서 업데이트 후 해당 글의 댓글 목록을 배열로 가져와 그 길이를 다시 글의 commentCount로 업데이트하는 방식으로 구현해보겠습니다.
+
+먼저 댓글 생성 시에는 현재 api 핸들러가 아래와 같습니다.
+
+```ts
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const db = (await connectDB).db('forum');
+
+    const session = await getServerSession(req, res, authOptions);
+
+    req.body = {
+      ...req.body,
+      author: session?.user?.email,
+      parent: new ObjectId(req.query.id as string),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection('comment').insertOne(req.body);
+
+    res.redirect(302, `/detail/${req.query.id}`);
+  }
+}
+```
+
+여기서 댓글을 insert한 후 아래의 코드를 추가하여 글 정보에 commentCount를 업데이트 해주었습니다.
+
+```ts
+await db.collection('comment').insertOne(req.body);
+
+const commentList = await db.collection('comment').find({ parent: req.body.parent }).toArray();
+
+await db
+  .collection('post')
+  .findOneAndUpdate({ _id: req.body.parent }, { $set: { commentCount: commentList.length } });
+
+res.redirect(302, `/detail/${req.query.id}`);
+```
+
+댓글을 삭제할 때도 마찬가지이므로 코드는 생략하겠습니다.
+
+그런데 모달창에서 문제가 발생했습니다.
+
+글 삭제 버튼을 누르면 아래와 같이 뜨는데
+
+![](/assets/image/image-18.png)
+
+댓글 삭제를 누르면 아래와 같이 뜹니다.
+
+![](/assets/image/image-19.png)
+
+배경이 완전 까맣게 변했습니다.
+
+원래 배경은 투명도를 낮췄었는데 배경이 까맣게 나온다는 건 배경이 여러번 겹쳐져 있다는 것
+
+그렇다면 모달창이 여러개가 떠있다는 것
+
+그래서 생각해보니 Comment 컴포넌트에서는 map으로 반복해서 Modal을 생성하고 있는데, openModal 함수를 통해 모든 모달이 한번에 열리는 것이다 라는 결론이 나왔습니다.
+
+이를 해결하기 위해서는 모달마다 고유한 번호(해당 댓글의 id)를 부여해주어 번호와 같은 모달만 뜨도록 하거나, 아예 map 밖으로 빼는 선택지가 있는데,
+
+저는 삭제버튼 클릭시에 해당 댓글 정보를 상태로 저장하기 때문에 굳이 map 안에 넣을 필요가 없어서 map 밖으로 빼주어 해결하겠습니다.
+
+생각대로 배경이 다시 반투명해지고, modal이 하나만 뜹니다.
+
+![](/assets/image/image-20.png)
+
+다음 시간에는 mypage를 간단하게 구현해보고 시간이 된다면 배포까지 해보겠습니다.
+
+</details>
+
+<details>
+
+<summary>
+
 #### 2023. 10. 19.
 
 </summary>
