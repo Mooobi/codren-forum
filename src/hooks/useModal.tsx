@@ -37,7 +37,14 @@ export default function useModal() {
           <Message>{message}</Message>
           {children}
           <ButtonSection>
-            <Button background={background} color={color} onClick={clickHandler}>
+            <Button
+              background={background}
+              color={color}
+              onClick={() => {
+                clickHandler();
+                closeModal();
+              }}
+            >
               {buttonName}
             </Button>
             <Button background='#444444' color='white' onClick={closeModal}>

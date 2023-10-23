@@ -1,10 +1,13 @@
 'use client';
 import Button from '@/components/Button';
+import useModal from '@/hooks/useModal';
 import { comment } from '@/types/type';
 import { calculateTimeDifference } from '@/util/calculateTimeDifference';
 import isUpdated from '@/util/isUpdated';
+import axios from 'axios';
 import { Session } from 'next-auth';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
 export default function Comment({
@@ -16,7 +19,19 @@ export default function Comment({
   comments: comment[];
   session: Session | null;
 }) {
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<comment | null>(null);
+  const { Modal, openModal } = useModal();
+
+  const handleDelete = async (comment: comment) => {
+    if (comment.author === session?.user?.email) {
+      const result = await axios.delete(`/api/comment/delete/${comment.parent}/${comment._id}`);
+      if (result.status === 204) {
+        router.refresh();
+      }
+    }
+  };
 
   return (
     <Container>
@@ -31,7 +46,14 @@ export default function Comment({
                   {session?.user?.email === comment.author && (
                     <Edit>
                       <button onClick={() => setIsEditing(comment._id)}>수정</button>
-                      <button>삭제</button>
+                      <button
+                        onClick={() => {
+                          setDeleteTarget(comment);
+                          openModal();
+                        }}
+                      >
+                        삭제
+                      </button>
                     </Edit>
                   )}
                   <div>
@@ -42,6 +64,13 @@ export default function Comment({
                     )}
                   </div>
                 </Info>
+                <Modal
+                  message='정말 댓글을 삭제하시겠습니까?'
+                  buttonName='삭제'
+                  clickHandler={() => handleDelete(deleteTarget as comment)}
+                  background='#618856'
+                  color='white'
+                />
               </>
             ) : (
               <EditForm method='POST' action={`/api/comment/edit/${comment._id}`}>
